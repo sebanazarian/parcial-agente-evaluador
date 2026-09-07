@@ -91,7 +91,14 @@ class Handler(BaseHTTPRequestHandler):
             return {}
         try:
             return json.loads(raw.decode("utf-8"))
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            # Bytes que no son UTF-8 válido tiraban una excepción sin capturar
+            # acá adentro y cortaban la conexión en seco (el cliente veía
+            # "conexión reiniciada", no un error prolijo). El frontend propio
+            # siempre manda UTF-8 real, pero cualquier otro cliente que le
+            # pegue a esta API no tiene por qué — tratamos un body ilegible
+            # igual que uno vacío, y la validación de cada endpoint hace el
+            # resto.
             return {}
 
     def _send_json(self, obj, status=200, set_cookie: str | None = None):
